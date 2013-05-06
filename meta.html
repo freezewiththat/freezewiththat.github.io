@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="stylesheets/bootstrap.css">
+        <script src="javascripts/jquery.js"></script>
+        <script src="javascripts/bootstrap.js"></script>
+        <script src="javascripts/d3.v3.min.js"></script>
+        <style>
+            .filter_group {
+                border-bottom:1px solid black;
+                width:50%;
+                margin-bottom:1em;
+                float:left;
+            }
+
+            label {
+                margin-right:1em;
+                float:left;
+            }
+
+            td {
+                text-align:center;
+            }
+            input[type="checkbox"] {
+                margin-right:1em;
+            }
+            select {
+                height:20px;
+            }
+        </style>
+        <script>
+
+            function htmlEntities(str) {
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function useData(data) {
+                
+                //d3.select("body").selectAll("p").data(data).enter().append('p').text(function(d) { return htmlEntities(d["Author"]); });
+                var filters = d3.select("body").select("#filters");
+                filters.selectAll("input")
+                    .data(Object.keys(data[0]))
+                    .enter()
+                    .append("div")
+                        .attr("class", "filter_group")
+                        .html(function(d){ return "<label>"+d+"</label"; })
+                    .append("input")
+                        .attr("type","checkbox")
+                        .attr("value",function(d){return d;})
+                        .attr("onClick", "filterUpdate()")
+                        .attr("id", function(d,i){return "check_"+i;})
+                        .attr("class", "filter");
+                    
+
+                $(".filter").after($(".filterToggle").clone().attr("id", ""));
+                $("select").each(function(index, element){ if ($(element).attr("id") === "") {$(element).attr("id", "select_"+index);} }).change(filterUpdate);
+
+
+                var svg = d3.select("body").select("svg");
+                var circle = svg.selectAll("circle").data(data);
+                circle.attr("cx", function(){
+                    return Math.random() * 50;
+                });
+                
+                var enter = circle.enter().append('circle');
+
+                enter.attr("cx", function(d, i) {
+                    return 100 * (i % 10) + 50;
+                })
+                .attr("cy", function(d, i) {
+                    return (Math.floor(i / 10)) * 100 + 50;
+                })
+                .attr("r", function(d, i) {
+                    return 50;
+                })
+                .attr("fill", "steelblue")
+                .attr("stroke", "black")
+                .attr('onclick', function(d){
+                    return "presentModal(this)";
+                });
+                //filterUpdate();
+                $("#main").hide();
+            }   
+
+            function presentModal(alerter){
+                var val = d3.select(alerter);
+                var data = val.data()[0];
+                var info = $("#info");
+                $("#info_title").html(data["Author"]);
+                $("#Pro").html(data["Pro"]);
+                $("#Retro").html(data["Retro"]);
+                $("#Sample_Size").html(data["Sample Size"]);
+                $("#Proportion").html(data["Proportion"]);
+                $("#p-value").html(data["p-value"]);
+                $("#HR").html(data["HR"]);
+                $("#CI").html(data["CI"]);
+                $("#5-Year_Recurrence_Free").html(data["5-Year Recurrence Free"]);
+                $("#10-Year_Recurrence_Free").html(data["10-Year Recurrence Free"]);
+                $("#5-Year_Survival").html(data["5-Year Survival"]);
+                $("#10-Year_Survival").html(data["10-Year Survival"]);
+                $("#Other").html(data["Other"]);
+                $("#Disease-Free_Survival").html(data["Disease-Free Survival"]);
+                $("#Overall_Survival").html(data["Overall Survival"]);
+                $("#Luteal").html(data["Luteal"]);
+                $("#Follicular").html(data["Follicular"]);
+                $("#Cofounders").html(data["Cofounders"]);
+                $("#No_Relationship").html(data["No Relationship"]);
+                info.modal();
+            }
+
+            function filterUpdate() {
+
+                var filters = d3.select("body").select("#filters").selectAll("input")[0];
+                var filterValues = [];
+                for (var a=0; a<filters.length; a++) {
+                    if (filters[a].checked) {
+                        filterValues.push({"val":filters[a].value, "include": $("#select_"+a).val()} );
+                    }
+                }
+
+                var svg = d3.select("body").select("svg");
+                var circle = svg.selectAll("circle");
+                
+                function filter(row) {
+                    for (var a=0; a<filterValues.length; a++) {
+                        if (row[filterValues[a]["val"]] === '') {
+                            
+                            if (filterValues[a]["include"] == "true")
+                                return false;
+
+                        } else {
+
+                            if (filterValues[a]["include"] == "false")
+                                return false;
+
+                        }
+                    }
+                    return true;
+                }
+                var counter = 0;
+                circle.attr("fill", function(d, i) {
+                    if (filter(d)) {
+                        counter++;
+                        return "cadetblue";
+                    } else {
+                        return "steelblue";
+                    }
+                }).attr("fill-opacity", function(d) {
+                    if (filter(d)) {
+                        return 1;
+                    } else {
+                        return .1;
+                    }
+                }).attr('stroke-opacity', function(d) {
+                    if (filter(d)) {
+                        return 1;
+                    } else {
+                        return .1;
+                    }
+                }
+                );
+                $("#counter").html(""+counter);
+            }
+        </script>
+    </head>
+    <body>
+        <form id="filters" style="margin-bottom:1em;">
+            
+        </form>
+        <div>
+            <span>Number matching criteria:</span><span id="counter" style="font-weight:bolder; font-size:2em"></span>
+        </div>
+        <svg>
+        </svg>
+        <div class="modal hide fade" id="info">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3 id="info_title"></h3>
+          </div>
+          <div class="modal_body">
+            <table class="table table-bordered" >
+                <tr>
+                    <th>Pro</th>
+                    <th>Retro</th>
+                    <th>Sample Size</th>
+                    <th>Proportion</th>
+                    <th>p-value</th>
+                    <th>HR</th>
+                    
+                    
+                </tr>
+                <tr>
+                    <td id="Pro"></td>
+                    <td id="Retro"></td>
+                    <td id="Sample_Size"></td>
+                    <td id="Proportion"></td>
+                    <td id="p-value"></td>
+                    <td id="HR"></td>
+                    
+                    
+                </tr>
+                <tr>
+                    <th>CI</th>
+                    <th>5-Year Recurrence Free</th>
+                    <th>10-Year Recurrence Free</th>
+                    <th>5-Year Survival</th>
+                    <th>10-Year Survival</th>
+                    <th>Other</th>
+                </tr>
+                <tr>
+                    <td id="CI"></td>
+                    <td id="5-Year_Recurrence_Free"></td>
+                    <td id="10-Year_Recurrence_Free"></td>
+                    <td id="5-Year_Survival"></td>
+                    <td id="10-Year_Survival"></td>
+                    <td id="Other"></td>
+
+
+                </tr>
+                <tr>
+
+                    <th>Disease-Free Survival</th>
+                    <th>Overall Survival</th>
+                    <th>Luteal</th>
+                    <th>Follicular</th>
+                    <th>Cofounders</th>
+                    <th>No Relationship</th>
+                </tr>
+                <tr>
+                    <td id="Disease-Free_Survival"></td>
+                    <td id="Overall_Survival"></td>
+                    <td id="Luteal"></td>
+                    <td id="Follicular"></td>
+                    <td id="Cofounders"></td>
+                    <td id="No_Relationship"></td>
+                </tr>
+            </table>
+          </div>
+        </div>
+        
+        <select class="filterToggle" id="main">
+            <option value="true">Include</option>
+            <option value="false">Exclude</option>
+        </select>
+        <script>
+            
+            d3.csv("studies.csv", useData);
+        </script>
+    </body>
+</html>
